@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
+	"time"
 	"strconv"
 
 	"go.opentelemetry.io/auto/pkg/inject"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/ebpf/ringbuf"
 	"golang.org/x/sys/unix"
 
 	"go.opentelemetry.io/auto/pkg/instrumentors/context"
@@ -55,7 +56,7 @@ type Instrumentor struct {
 	bpfObjects   *bpfObjects
 	uprobes      []link.Link
 	returnProbs  []link.Link
-	eventsReader *perf.Reader
+	eventsReader *ringbuf.Reader
 }
 
 // IncludeDBStatementEnvVar is the environment variable to opt-in for sql query inclusion in the trace.
@@ -132,7 +133,7 @@ func (h *Instrumentor) Load(ctx *context.InstrumentorContext) error {
 		h.returnProbs = append(h.returnProbs, retProbe)
 	}
 
-	rd, err := perf.NewReader(h.bpfObjects.Events, os.Getpagesize())
+	rd, err := ringbuf.NewReader(h.bpfObjects.Events)
 	if err != nil {
 		return err
 	}
@@ -145,20 +146,28 @@ func (h *Instrumentor) Load(ctx *context.InstrumentorContext) error {
 func (h *Instrumentor) Run(eventsChan chan<- *events.Event) {
 	logger := log.Logger.WithName("database/sql/sql-instrumentor")
 	var event Event
+	h.eventsReader.SetDeadline(time.Now().Add(5 * time.Second))
 	for {
 		record, err := h.eventsReader.Read()
 		if err != nil {
-			if errors.Is(err, perf.ErrClosed) {
+			if errors.Is(err, os.ErrClosed) {
 				return
 			}
-			logger.Error(err, "error reading from perf reader")
-			continue
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				logger.Info("Timeout expired")
+				// Reset the timeout
+				h.eventsReader.SetDeadline(time.Time{})
+				goto ReadEvent
+			} else {
+				logger.Error(err, "error reading from perf reader")
+				continue
+			}
 		}
 
-		if record.LostSamples != 0 {
-			logger.V(0).Info("perf event ring buffer full", "dropped", record.LostSamples)
-			continue
-		}
+		// if record.LostSamples != 0 {
+		// 	logger.V(0).Info("perf event ring buffer full", "dropped", record.LostSamples)
+		// 	continue
+		// }
 
 		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &event); err != nil {
 			logger.Error(err, "error parsing perf event")

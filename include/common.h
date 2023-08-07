@@ -84,6 +84,14 @@ enum
 #define BPF_F_INDEX_MASK 0xffffffffULL
 #define BPF_F_CURRENT_CPU BPF_F_INDEX_MASK
 
+/* BPF_FUNC_bpf_ringbuf_commit, BPF_FUNC_bpf_ringbuf_discard, and
+ * BPF_FUNC_bpf_ringbuf_output flags.
+ */
+enum {
+	BPF_RB_NO_WAKEUP		= (1ULL << 0),
+	BPF_RB_FORCE_WAKEUP		= (1ULL << 1),
+};
+
 #if defined(__TARGET_ARCH_x86)
 struct pt_regs {
 	/*

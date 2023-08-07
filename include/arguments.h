@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef __ARGUMENTS_H__
+#define __ARGUMENTS_H__
+
 #include "common.h"
 #include "bpf_tracing.h"
 #include "bpf_helpers.h"
@@ -73,3 +76,5 @@ inline void *get_goroutine_address(struct pt_regs *ctx, int go_ctx_index)
 
     return get_argument_by_stack(ctx, go_ctx_index);
 }
+
+#endif

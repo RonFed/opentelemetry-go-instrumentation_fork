@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _GO_CONTEXT_H_
+#define _GO_CONTEXT_H_
+
 #include "bpf_helpers.h"
 
 #define MAX_DISTANCE 10
@@ -35,3 +38,5 @@ static __always_inline void *find_context_in_map(void *ctx, void *context_map)
     bpf_printk("context %lx not found in context map", ctx);
     return NULL;
 }
+
+#endif

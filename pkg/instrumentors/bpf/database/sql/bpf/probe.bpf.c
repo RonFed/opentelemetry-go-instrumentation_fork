@@ -24,11 +24,13 @@ struct {
 } context_to_sql_events SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024 /* 256 KB */);
 } events SEC(".maps");
 
 // Injected in init
 volatile const bool should_include_db_statement;
+u64 ring_counter = 0;
 
 // This instrumentation attaches uprobe to the following function:
 // func (db *DB) queryDC(ctx, txctx context.Context, dc *driverConn, releaseConn func(error), query string, args []any)
@@ -76,13 +78,24 @@ SEC("uprobe/queryDC")
 int uprobe_queryDC_Returns(struct pt_regs *ctx) {
     u64 context_ptr_pos = 3;
     void *goroutine = get_goroutine_address(ctx, context_ptr_pos);
-    void *sqlReq_ptr = bpf_map_lookup_elem(&context_to_sql_events, &goroutine);
+    struct sql_request_t *sqlReq_map_ptr = (struct sql_request_t *)bpf_map_lookup_elem(&context_to_sql_events, &goroutine);
+    if (!sqlReq_map_ptr) {
+        return 0;
+    }
 
-    struct sql_request_t sqlReq = {0};
-    bpf_probe_read(&sqlReq, sizeof(sqlReq), sqlReq_ptr);
-    sqlReq.end_time = bpf_ktime_get_ns();
+    struct sql_request_t *sqlReq_ring_ptr;
+    sqlReq_ring_ptr = bpf_ringbuf_reserve(&events, sizeof(*sqlReq_ring_ptr), 0);
+	if (!sqlReq_ring_ptr) {
+        return 0;
+    }
 
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &sqlReq, sizeof(sqlReq));
+
+ 	*sqlReq_ring_ptr = *sqlReq_map_ptr;
+    sqlReq_ring_ptr->end_time = bpf_ktime_get_ns();
+
+    ring_counter++;
+    u64 flags = (ring_counter % 20 == 0) ? BPF_RB_FORCE_WAKEUP : BPF_RB_NO_WAKEUP;
+    bpf_ringbuf_submit(sqlReq_ring_ptr, flags);
 
     bpf_map_delete_elem(&context_to_sql_events, &goroutine);
     bpf_map_delete_elem(&spans_in_progress, &goroutine);

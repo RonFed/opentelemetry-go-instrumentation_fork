@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _UTILS_H_
+#define _UTILS_H_
+
 #include "bpf_helpers.h"
 
 #define TRACE_ID_SIZE 16
@@ -75,3 +78,5 @@ static __always_inline void copy_byte_arrays(unsigned char *src, unsigned char *
         dst[i] = src[i];
     }
 }
+
+#endif
