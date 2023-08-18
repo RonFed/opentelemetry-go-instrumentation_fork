@@ -3,7 +3,7 @@ module go.opentelemetry.io/auto
 go 1.18
 
 require (
-	github.com/cilium/ebpf v0.11.0
+	github.com/cilium/ebpf v0.11.1-0.20230814153425-01ebd4c1e2b9
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
 	github.com/hashicorp/go-version v1.6.0

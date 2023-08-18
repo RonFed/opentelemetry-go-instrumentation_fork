@@ -17,7 +17,6 @@ package sql
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"os"
 	"time"
 	"strconv"
@@ -146,22 +145,12 @@ func (h *Instrumentor) Load(ctx *context.InstrumentorContext) error {
 func (h *Instrumentor) Run(eventsChan chan<- *events.Event) {
 	logger := log.Logger.WithName("database/sql/sql-instrumentor")
 	var event Event
-	h.eventsReader.SetDeadline(time.Now().Add(5 * time.Second))
 	for {
+		h.eventsReader.SetDeadline(time.Now().Add(5 * time.Second))
 		record, err := h.eventsReader.Read()
 		if err != nil {
-			if errors.Is(err, os.ErrClosed) {
-				return
-			}
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				logger.Info("Timeout expired")
-				// Reset the timeout
-				h.eventsReader.SetDeadline(time.Time{})
-				goto ReadEvent
-			} else {
-				logger.Error(err, "error reading from perf reader")
-				continue
-			}
+			logger.Error(err, "error reading from perf reader")
+			continue
 		}
 
 		// if record.LostSamples != 0 {
