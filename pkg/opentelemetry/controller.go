@@ -53,7 +53,7 @@ var (
 
 // Controller handles OpenTelemetry telemetry generation for events.
 type Controller struct {
-	tracerProvider trace.TracerProvider
+	tracerProvider *sdktrace.TracerProvider
 	tracersMap     map[string]trace.Tracer
 	bootTime       int64
 }
@@ -104,6 +104,11 @@ func NewController() (*Controller, error) {
 		return nil, fmt.Errorf("%s env var must be set", otelServiceNameEnvVar)
 	}
 
+	return NewControllerWithServiceName(serviceName)
+}
+
+// NewControllerWithServiceName returns a new initialized [Controller] with the given service name.
+func NewControllerWithServiceName(serviceName string) (*Controller, error) {
 	ctx := context.Background()
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
@@ -145,6 +150,10 @@ func NewController() (*Controller, error) {
 		bootTime:       bt,
 	}, nil
 }
+
+// func (c *Controller) Close() error {
+// 	return c.tracerProvider.Shutdown(context.Background())
+// }
 
 func estimateBootTimeOffset() (bootTimeOffset int64, err error) {
 	// The datapath is currently using ktime_get_boot_ns for the pcap timestamp,

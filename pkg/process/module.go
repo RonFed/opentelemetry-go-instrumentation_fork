@@ -32,7 +32,9 @@ import (
 // the binary's pointer size (1 byte),
 // and whether the binary is big endian (1 byte).
 var buildInfoMagic = []byte("\xff Go buildinf:")
-var errNotGoExe = errors.New("not a Go executable")
+
+// The analyzed executable is not from Go.
+var ErrNotGoExe = errors.New("not a Go executable")
 
 func (a *Analyzer) getModuleDetails(f *elf.File) (*version.Version, map[string]string, error) {
 	goVersion, modules, err := getGoDetails(f)
@@ -69,7 +71,7 @@ func getGoDetails(f *elf.File) (string, string, error) {
 	for {
 		i := bytes.Index(data, buildInfoMagic)
 		if i < 0 || len(data)-i < buildInfoSize {
-			return "", "", errNotGoExe
+			return "", "", ErrNotGoExe
 		}
 		if i%buildInfoAlign == 0 && len(data)-i >= buildInfoSize {
 			data = data[i:]
@@ -111,7 +113,7 @@ func getGoDetails(f *elf.File) (string, string, error) {
 		mod = readString(f, ptrSize, readPtr, readPtr(data[16+ptrSize:]))
 	}
 	if vers == "" {
-		return "", "", errNotGoExe
+		return "", "", ErrNotGoExe
 	}
 	if len(mod) >= 33 && mod[len(mod)-17] == '\n' {
 		// Strip module framing: sentinel strings delimiting the module info.
