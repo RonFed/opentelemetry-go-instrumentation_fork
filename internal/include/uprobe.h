@@ -39,6 +39,7 @@ int uprobe_##name##_Returns(struct pt_regs *ctx) {                              
     void *key = get_consistent_key(ctx, (void *)(req_ptr + ctx_struct_offset));                            \
     void *req_ptr_map = bpf_map_lookup_elem(&uprobe_context_map, &key);                                    \
     event_type tmpReq = {};                                                                                \
+    __builtin_memset(&tmpReq, 0, sizeof(tmpReq));                                                          \
     bpf_probe_read(&tmpReq, sizeof(tmpReq), req_ptr_map);                                                  \
     tmpReq.end_time = bpf_ktime_get_ns();                                                                  \
     bpf_perf_event_output(ctx, &events_map, BPF_F_CURRENT_CPU, &tmpReq, sizeof(tmpReq));                   \
