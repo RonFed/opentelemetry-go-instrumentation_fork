@@ -58,7 +58,7 @@ func main() {
 	// Trap Ctrl+C and SIGTERM and call cancel on the context.
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer func() {
 		signal.Stop(ch)
 		cancel()
