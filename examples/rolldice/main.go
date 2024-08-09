@@ -12,6 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var SomeOtherFlag = false
+
 // Server is Http server that exposes multiple endpoints.
 type Server struct {
 	rand *rand.Rand
@@ -39,6 +41,14 @@ func setupHandler(s *Server) *http.ServeMux {
 	return mux
 }
 
+func probedFunction(f *bool) {
+	if *f {
+		logger.Info("probed function called with flag set")
+	} else {
+		logger.Info("probed function called with flag unset")
+	}
+}
+
 func main() {
 	var err error
 	logger, err = zap.NewDevelopment()
@@ -48,6 +58,13 @@ func main() {
 	}
 	port := fmt.Sprintf(":%d", 8080)
 	logger.Info("starting http server", zap.String("port", port))
+
+	go func() {
+		for {
+			probedFunction(&SomeOtherFlag)
+			time.Sleep(1 * time.Second)
+		}
+	} ()
 
 	s := NewServer()
 	mux := setupHandler(s)
